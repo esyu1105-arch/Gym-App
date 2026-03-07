@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Gym Tempo Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<style>
+body{background:rgb(18,18,18);color:rgb(255,255,255);text-align:center;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;height:100vh;margin:0;overflow:hidden}
+.home-screen,.train-screen,.congrats-screen{display:flex;flex-direction:column;align-items:center;gap:15px}
+.slogan-text{color:rgb(0,255,136);font-size:4.5rem;font-weight:900;margin:-80px 0 20px 0;font-style:italic;text-shadow:3px 3px 15px rgba(0,255,136,0.4);line-height:1.1}
+.target-title{font-size:1rem;margin:0;color:rgb(170,170,170);white-space:nowrap;letter-spacing:1px}
+.rep-info{color:rgb(0,255,136);font-size:2rem;font-weight:600}
+.main-display{font-size:8rem;font-weight:900;margin:10px 0;line-height:1.1;min-height:9rem;display:flex;align-items:center;justify-content:center}
+.congrats-msg{font-size:2.2rem;color:rgb(0,255,136);padding:20px;line-height:1.4}
+input{background:rgb(34,34,34);border:2px solid rgb(0,255,136);color:rgb(255,255,255);padding:15px;font-size:1.5rem;border-radius:12px;width:120px;text-align:center}
+button{padding:20px 45px;font-size:1.5rem;border:none;border-radius:18px;font-weight:700;min-width:160px}
+.btn-go,.btn-resume{background:rgb(0,255,136);color:rgb(0,0,0)}
+.btn-stop{background:rgb(255,68,68);color:rgb(255,255,255)}
+.btn-reset{background:rgb(68,68,68);color:rgb(255,255,255)}
+.hidden{display:none!important}
+</style></head>
+<body>
+<div class="home-screen" id="h"><p class="slogan-text">肥豬王<br>瘦撚梗</p><h1 class="target-title">Enter the Target Rep</h1><input type="number" id="t" value="10" min="1"><button class="btn-go" id="g">GO</button></div>
+<div class="train-screen hidden" id="tr"><div class="rep-info" id="rl">Get Ready</div><div class="main-display" id="cl">READY</div><div style="display:flex;gap:10px"><button class="btn-stop" id="p">STOP</button><button class="btn-reset" id="r">RESET</button></div></div>
+<div class="congrats-screen hidden" id="co"><div class="congrats-msg">Congratulations!<br>Well done!</div><button class="btn-go" id="bk">BACK</button></div>
+<script>
+let rep=1,count=1,timer=null,target=100,isPaused=false;const sp=window.speechSynthesis;
+function speak(txt,rate){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=rate;sp.speak(u)}
+function resetApp(){if(timer)clearInterval(timer);timer=null;sp.cancel();document.getElementById('h').classList.remove('hidden');document.getElementById('tr').classList.add('hidden');document.getElementById('co').classList.add('hidden')}
+function startTraining(){timer=setInterval(function(){if(!isPaused){if(count==1){if(rep>target){showCongrats();return}document.getElementById('rl').innerText='Rep '+rep+' / '+target;document.getElementById('cl').innerText=rep;speak(rep.toString(),1.3)}else{document.getElementById('cl').innerText=count;speak(count.toString(),1.3)}count++;if(count>4){count=1;rep++}}},1000)}
+function showCongrats(){if(timer)clearInterval(timer);timer=null;speak('Congratulations! Well done!',1.0);document.getElementById('tr').classList.add('hidden');document.getElementById('co').classList.remove('hidden');setTimeout(resetApp,4500)}
+window.onload=function(){
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+document.getElementById('g').addEventListener('click',function(){
+const val=document.getElementById('t').value;target=val>0?parseInt(val):100;
+document.getElementById('h').classList.add('hidden');document.getElementById('tr').classList.remove('hidden');rep=1;count=1;isPaused=false;
+document.getElementById('cl').innerText='READY';speak('Ready',1.0);
+setTimeout(function(){document.getElementById('cl').innerText='3';speak('3',1.3);
+setTimeout(function(){document.getElementById('cl').innerText='2';speak('2',1.3);
+setTimeout(function(){document.getElementById('cl').innerText='1';speak('1',1.3);startTraining()},1000)},1000)},1000)});
+document.getElementById('p').addEventListener('click',function(){isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';this.style.background=isPaused?'rgb(0,255,136)':'rgb(255,68,68)';this.style.color=isPaused?'rgb(0,0,0)':'rgb(255,255,255)'});
+document.getElementById('r').addEventListener('click',resetApp);document.getElementById('bk').addEventListener('click',resetApp)}
+</script></body></html>
