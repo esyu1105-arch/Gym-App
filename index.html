@@ -16,11 +16,12 @@ body{background:rgb(18,18,18);color:rgb(255,255,255);text-align:center;font-fami
 .rest-title{font-size:2rem;color:rgb(255,255,255);margin:0}
 .input-group{display:flex;gap:15px;margin-bottom:10px}
 input{background:rgb(34,34,34);border:2px solid rgb(0,255,136);color:rgb(255,255,255);padding:12px;font-size:1.5rem;border-radius:12px;width:100px;text-align:center}
-button{padding:20px 45px;font-size:1.5rem;border:none;border-radius:18px;font-weight:700;min-width:160px}
-.btn-go,.btn-resume,.btn-skip{background:rgb(0,255,136);color:rgb(0,0,0)}
-.btn-plus{background:rgb(255,193,7);color:rgb(0,0,0);margin-bottom:10px}
+button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-weight:700;min-width:110px}
+.btn-go,.btn-resume,.btn-skip{background:rgb(0,255,136);color:rgb(0,0,0);min-width:160px}
+.btn-plus{background:rgb(255,193,7);color:rgb(0,0,0);margin-bottom:10px;min-width:160px}
 .btn-stop{background:rgb(255,68,68);color:rgb(255,255,255)}
 .btn-reset{background:rgb(68,68,68);color:rgb(255,255,255)}
+.btn-end{background:rgb(100,100,100);color:rgb(255,255,255)}
 #diu-msg{color:rgb(255,68,68);font-weight:900;font-size:1.8rem;min-height:2.2rem;margin-bottom:5px;text-transform:uppercase}
 .hidden{display:none!important}
 </style></head>
@@ -32,14 +33,12 @@ button{padding:20px 45px;font-size:1.5rem;border:none;border-radius:18px;font-we
 <div style="display:flex;flex-direction:column;gap:5px"><span class="target-title-sub">SETS</span><input type="number" id="ts-in" value="4"></div>
 </div>
 <button class="btn-go" id="g">START SESSION</button></div>
-<div class="screen hidden" id="train-scr"><div class="rep-info" id="status-label">Set 1 / 4</div><div class="main-display" id="count-label">READY</div><div style="display:flex;gap:10px"><button class="btn-stop" id="p">STOP</button><button class="btn-reset" id="r">RESET</button></div></div>
-<div class="screen hidden" id="rest-scr">
-<h2 class="rest-title">RESTING...</h2>
-<div id="diu-msg"></div>
-<div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div>
-<button class="btn-plus" id="add-time">比多10秒抖抖氣</button>
-<button class="btn-skip" id="skip">SKIP REST</button>
-</div>
+<div class="screen hidden" id="train-scr"><div class="rep-info" id="status-label">Set 1 / 4</div><div class="main-display" id="count-label">READY</div><div style="display:flex;gap:8px">
+<button class="btn-stop" id="p">STOP</button>
+<button class="btn-reset" id="r">RESET</button>
+<button class="btn-end" id="e">END</button>
+</div></div>
+<div class="screen hidden" id="rest-scr"><h2 class="rest-title">RESTING...</h2><div id="diu-msg"></div><div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div><button class="btn-plus" id="add-time">比多10秒抖抖氣</button><button class="btn-skip" id="skip">SKIP REST</button></div>
 <div class="screen hidden" id="co"><div class="main-display" style="font-size:2.2rem;color:rgb(0,255,136);padding:20px;line-height:1.4">Congratulations!<br>Session Complete!</div><button class="btn-go" id="bk">DONE</button></div>
 
 <script>
@@ -47,49 +46,50 @@ let rep=1,count=1,currentSet=1,totalSetsToday=0,plusCount=0,timeLeft=60;
 let timer=null,restTimer=null,targetReps=10,targetSets=4,isPaused=false;
 let activeTimeouts=[];
 const sp=window.speechSynthesis;
+const cGreen = 'rgb(0,255,136)', cYellow = 'rgb(255,235,59)', cWhite = 'rgb(255,255,255)';
 
-function speak(txt,rate=1.3){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=rate;sp.speak(u)}
+function speak(txt,rate=1.1){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=rate;sp.speak(u)}
 function clearAllTimeouts(){activeTimeouts.forEach(clearTimeout);activeTimeouts=[]}
 
 function resetToHome(){
-    if(timer)clearInterval(timer);
-    if(restTimer)clearInterval(restTimer);
-    clearAllTimeouts();
-    timer=null;restTimer=null;sp.cancel();
+    if(timer)clearInterval(timer);if(restTimer)clearInterval(restTimer);
+    clearAllTimeouts();timer=null;restTimer=null;sp.cancel();
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
     document.getElementById('h').classList.remove('hidden');
     document.getElementById('total-stats').innerText="Today's Progress: "+totalSetsToday+" Sets";
 }
+
+function restartCurrentSet(){if(timer)clearInterval(timer);clearAllTimeouts();timer=null;sp.cancel();startSet();}
 
 function startSet(){
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
     document.getElementById('train-scr').classList.remove('hidden');
     rep=1;count=1;isPaused=false;
     
-    // BUG FIX: Reset STOP button UI
-    const pBtn = document.getElementById('p');
-    pBtn.innerText = 'STOP';
-    pBtn.style.background = 'rgb(255,68,68)';
-    pBtn.style.color = 'rgb(255,255,255)';
-
-    document.getElementById('status-label').innerText='Set '+currentSet+' / '+targetSets;
-    document.getElementById('count-label').innerText='READY';
-    speak('Set '+currentSet+'. Ready.',1.0);
+    const pBtn = document.getElementById('p'), cLbl = document.getElementById('count-label');
+    pBtn.innerText = 'STOP'; pBtn.style.background = 'rgb(255,68,68)'; pBtn.style.color = cWhite;
     
-    let t1=setTimeout(()=>{document.getElementById('count-label').innerText='3';speak('3',1.2);
-    let t2=setTimeout(()=>{document.getElementById('count-label').innerText='2';speak('2',1.2);
-    let t3=setTimeout(()=>{document.getElementById('count-label').innerText='1';speak('1',1.2);
-    let t4=setTimeout(()=>{runLogic()},1000);activeTimeouts.push(t4)},1000);activeTimeouts.push(t3)},1000);activeTimeouts.push(t2)},1500);
+    cLbl.innerText = 'READY'; cLbl.style.color = cYellow; // Ready Phase Color
+    document.getElementById('status-label').innerText='Set '+currentSet+' / '+targetSets;
+    speak('Ready', 1.0);
+    
+    let t1=setTimeout(()=>{cLbl.innerText='3';speak('3',1.1);
+    let t2=setTimeout(()=>{cLbl.innerText='2';speak('2',1.1);
+    let t3=setTimeout(()=>{cLbl.innerText='1';speak('1',1.1);
+    let t4=setTimeout(()=>{cLbl.innerText='GO';cLbl.style.color = cGreen;speak('GO',1.2); // Switch to Action Color
+    let t5=setTimeout(()=>{runLogic()},800);activeTimeouts.push(t5)},1000);activeTimeouts.push(t4)},1000);activeTimeouts.push(t3)},1000);activeTimeouts.push(t2)},1500);
     activeTimeouts.push(t1);
 }
 
 function runLogic(){
+    const cLbl = document.getElementById('count-label');
+    cLbl.style.color = cGreen; // Ensure action color
     timer=setInterval(()=>{
         if(!isPaused){
             if(count==1){
                 if(rep>targetReps){finishSet();return}
-                document.getElementById('count-label').innerText=rep;speak(rep.toString(),1.3)
-            }else{document.getElementById('count-label').innerText=count;speak(count.toString(),1.3)}
+                cLbl.innerText=rep;speak(rep.toString(),1.1)
+            }else{cLbl.innerText=count;speak(count.toString(),1.1)}
             count++;if(count>4){count=1;rep++}
         }
     },1000)
@@ -102,12 +102,12 @@ function startRest(){
     document.getElementById('rest-scr').classList.remove('hidden');
     plusCount=0;timeLeft=60;
     document.getElementById('diu-msg').innerText='';
-    document.getElementById('rest-clock').style.color='rgb(0,255,136)';
+    document.getElementById('rest-clock').style.color=cGreen;
     document.getElementById('rest-clock').innerText=timeLeft;
     restTimer=setInterval(()=>{
         timeLeft--;document.getElementById('rest-clock').innerText=timeLeft;
         if(timeLeft===10)speak('10 seconds left',1.0);
-        if(timeLeft<=3&&timeLeft>0)speak(timeLeft.toString(),1.0);
+        if(timeLeft<=3&&timeLeft>0)speak(timeLeft.toString(),1.1);
         if(timeLeft<=0){clearInterval(restTimer);currentSet++;startSet()}
     },1000)
 }
@@ -115,22 +115,14 @@ function startRest(){
 function showFinalCongrats(){speak('Congratulations! Session Complete!',1.0);document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));document.getElementById('co').classList.remove('hidden')}
 
 window.onload=function(){
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
-    document.getElementById('g').addEventListener('click',()=>{
-        targetReps=parseInt(document.getElementById('tr-in').value);
-        targetSets=parseInt(document.getElementById('ts-in').value);
-        currentSet=1;startSet()
-    });
-    document.getElementById('p').addEventListener('click',function(){
-        isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';
-        this.style.background=isPaused?'rgb(0,255,136)':'rgb(255,68,68)';
-        this.style.color=isPaused?'rgb(0,0,0)':'rgb(255,255,255)'
-    });
-    document.getElementById('r').addEventListener('click',resetToHome);
+    document.getElementById('g').addEventListener('click',()=>{targetReps=parseInt(document.getElementById('tr-in').value);targetSets=parseInt(document.getElementById('ts-in').value);currentSet=1;startSet()});
+    document.getElementById('p').addEventListener('click',function(){isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';this.style.background=isPaused?cGreen:'rgb(255,68,68)';this.style.color=isPaused?'rgb(0,0,0)':cWhite});
+    document.getElementById('r').addEventListener('click',restartCurrentSet);
+    document.getElementById('e').addEventListener('click',resetToHome);
     document.getElementById('bk').addEventListener('click',resetToHome);
     document.getElementById('skip').addEventListener('click',()=>{clearInterval(restTimer);currentSet++;startSet()});
     document.getElementById('add-time').addEventListener('click',()=>{
-        if(plusCount<2){timeLeft+=10;plusCount++;document.getElementById('rest-clock').innerText=timeLeft;speak('Ten more seconds',1.0)}
+        if(plusCount<2){timeLeft+=10;plusCount++;document.getElementById('rest-clock').innerText=timeLeft;speak('Ten more seconds',1.1)}
         else{document.getElementById('diu-msg').innerText='Diu你咩抖咁耐';document.getElementById('rest-clock').style.color='rgb(255,68,68)';speak('Stop resting',1.0)}
     });
 }
