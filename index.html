@@ -8,7 +8,7 @@
 body{background:rgb(18,18,18);color:rgb(255,255,255);text-align:center;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;height:100vh;margin:0;overflow:hidden}
 .screen{display:flex;flex-direction:column;align-items:center;gap:12px}
 .slogan-text{color:rgb(0,255,136);font-size:4.5rem;font-weight:900;margin:-60px 0 10px 0;font-style:italic;text-shadow:3px 3px 15px rgba(0,255,136,0.4);line-height:1.1}
-.countdown-text{font-size:1.2rem;color:rgb(255,68,68);margin-bottom:8px;font-weight:900;letter-spacing:1px}
+.countdown-text{font-size:1.2rem;color:rgb(255,68,68);margin-bottom:8px;font-weight:900;letter-spacing:1px;min-height:1.5rem}
 .target-title-main{font-size:0.95rem;margin:0 0 5px 0;color:rgb(170,170,170);white-space:nowrap;letter-spacing:0.5px}
 .target-title-sub{font-size:0.75rem;margin:0;color:rgb(120,120,120);font-weight:bold}
 .rep-info{color:rgb(0,255,136);font-size:1.8rem;font-weight:600}
@@ -28,7 +28,7 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 <body>
 <audio id="silent-audio" loop><source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav"></audio>
 <div class="screen" id="h"><p class="slogan-text">肥豬王<br>瘦撚梗</p>
-<div class="countdown-text" id="cd-display">🔥 最後衝刺 🔥 : -- weeks -- days</div>
+<div class="countdown-text" id="cd-display">🔥 最後衝刺 🔥</div>
 <h1 class="target-title-main">Enter Reps for T1, T2 and Sets</h1>
 <div class="input-group">
 <div style="display:flex;flex-direction:column;gap:5px"><span class="target-title-sub">REPS 1</span><input type="number" id="tr1-in" value="10"></div>
@@ -37,4 +37,31 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 </div>
 <button class="btn-go" id="g">START SESSION</button></div>
 <div class="screen hidden" id="train-scr"><div class="rep-info" id="status-label">Set 1 / 4 | T1</div><div class="main-display" id="count-label">READY</div><div style="display:flex;gap:8px"><button class="btn-stop" id="p">STOP</button><button class="btn-reset" id="r">RESET</button><button class="btn-end" id="e">END</button></div></div>
-<div class="screen hidden" id="rest-scr"><h2 class="rest-title">RESTING...</h2><div id="diu-msg"></div><div class="main-display" id="rest-clock" style="
+<div class="screen hidden" id="rest-scr"><h2 class="rest-title">RESTING...</h2><div id="diu-msg"></div><div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div><button class="btn-plus" id="add-time">比多10秒抖抖氣</button><button class="btn-skip" id="skip">SKIP REST</button></div>
+<div class="screen hidden" id="co"><div class="main-display" style="font-size:2.2rem;color:rgb(0,255,136);padding:20px;line-height:1.4">Congratulations!<br>Session Complete!</div><button class="btn-go" id="bk">DONE</button></div>
+
+<script>
+let rep=1,count=1,currentSet=1,plusCount=0,timeLeft=60,isT2=false;
+let timer=null,restTimer=null,t2Interval=null,targetReps1=10,targetReps2=10,targetSets=4,isPaused=false;
+let activeTimeouts=[];
+const sp=window.speechSynthesis;
+const cGreen='rgb(0,255,136)',cYellow='rgb(255,235,59)',cWhite='rgb(255,255,255)';
+
+function speak(txt,rate=1.1){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=rate;sp.speak(u)}
+function clearAllTimeouts(){activeTimeouts.forEach(clearTimeout);activeTimeouts=[]}
+
+function updateLockScreen(title, artist) {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: title, artist: artist, album: 'Gym Tempo Pro',
+            artwork: [{ src: 'icon.png', sizes: '512x512', type: 'image/png' }]
+        });
+    }
+}
+
+function updateCountdown() {
+    try {
+        const target=new Date(2026, 4, 24); // May is 4 (0-indexed)
+        const now=new Date();
+        const diff=target.getTime()-now.getTime();
+        const
