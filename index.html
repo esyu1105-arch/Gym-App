@@ -45,7 +45,7 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 
 <script>
 let rep=1,count=1,currentSet=1,plusCount=0,timeLeft=60,isT2=false;
-let timer=null,restTimer=null,targetReps1=10,targetReps2=10,targetSets=4,isPaused=false;
+let timer=null,restTimer=null,t2Interval=null,targetReps1=10,targetReps2=10,targetSets=4,isPaused=false;
 let activeTimeouts=[];
 const sp=window.speechSynthesis;
 const cGreen = 'rgb(0,255,136)', cYellow = 'rgb(255,235,59)', cWhite = 'rgb(255,255,255)';
@@ -66,14 +66,18 @@ function updateCountdown() {
 }
 
 function resetToHome(){
-    if(timer)clearInterval(timer);if(restTimer)clearInterval(restTimer);
-    clearAllTimeouts();timer=null;restTimer=null;sp.cancel();
+    if(timer)clearInterval(timer);if(restTimer)clearInterval(restTimer);if(t2Interval)clearInterval(t2Interval);
+    clearAllTimeouts();timer=null;restTimer=null;t2Interval=null;sp.cancel();
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
     document.getElementById('h').classList.remove('hidden');
     updateCountdown();
 }
 
-function restartCurrentSet(){if(timer)clearInterval(timer);clearAllTimeouts();timer=null;sp.cancel();isT2=false;startSet();}
+function restartCurrentPhase(){
+    if(timer)clearInterval(timer);if(t2Interval)clearInterval(t2Interval);
+    clearAllTimeouts();timer=null;t2Interval=null;sp.cancel();
+    if(isT2){ transitionToT2(true); } else { startSet(); }
+}
 
 function startSet(){
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
@@ -82,8 +86,8 @@ function startSet(){
     const pBtn = document.getElementById('p'), cLbl = document.getElementById('count-label');
     pBtn.innerText = 'STOP'; pBtn.style.background = 'rgb(255,68,68)'; pBtn.style.color = cWhite;
     cLbl.innerText = 'READY'; cLbl.style.color = cYellow;
-    document.getElementById('status-label').innerText=`Set ${currentSet} / ${targetSets} | ${isT2?'T2':'T1'}`;
-    speak(isT2?'Ready for Training 2':'Ready', 1.0);
+    document.getElementById('status-label').innerText=`Set ${currentSet} / ${targetSets} | T1`;
+    speak('Ready', 1.0);
     let t1=setTimeout(()=>{cLbl.innerText='3';speak('3',1.1);
     let t2=setTimeout(()=>{cLbl.innerText='2';speak('2',1.1);
     let t3=setTimeout(()=>{cLbl.innerText='1';speak('1',1.1);
@@ -101,7 +105,7 @@ function runLogic(){
             if(count==1){
                 if(rep>target){
                     clearInterval(timer);
-                    if(!isT2){ transitionToT2(); } else { finishSet(); }
+                    if(!isT2){ transitionToT2(false); } else { finishSet(); }
                     return;
                 }
                 cLbl.innerText=rep;speak(rep.toString(),1.1)
@@ -111,21 +115,22 @@ function runLogic(){
     },1000)
 }
 
-function transitionToT2(){
-    isT2 = true;
+function transitionToT2(isRestart){
+    isT2 = true; rep=1; count=1;
     const cLbl = document.getElementById('count-label');
     cLbl.innerText = 'T2 READY'; cLbl.style.color = cYellow;
     document.getElementById('status-label').innerText=`Set ${currentSet} / ${targetSets} | T2`;
-    speak('Training 1 complete. Get ready for Training 2', 1.0);
+    speak(isRestart ? 'Restarting Training 2. Ready.' : 'Training 1 complete. Ready for Training 2', 1.0);
     let timeLeft = 6;
-    let t2Interval = setInterval(()=>{
-        timeLeft--; cLbl.innerText = timeLeft > 0 ? timeLeft : 'GO';
-        if(timeLeft <= 3 && timeLeft > 0) speak(timeLeft.toString(), 1.1);
-        if(timeLeft <= 0){
-            clearInterval(t2Interval);
-            cLbl.style.color = cGreen; speak('GO', 1.2);
-            rep=1; count=1;
-            setTimeout(()=>runLogic(), 800);
+    t2Interval = setInterval(()=>{
+        if(!isPaused){
+            timeLeft--; cLbl.innerText = timeLeft > 0 ? timeLeft : 'GO';
+            if(timeLeft <= 3 && timeLeft > 0) speak(timeLeft.toString(), 1.1);
+            if(timeLeft <= 0){
+                clearInterval(t2Interval);
+                cLbl.style.color = cGreen; speak('GO', 1.2);
+                setTimeout(()=>runLogic(), 800);
+            }
         }
     }, 1000);
 }
@@ -157,8 +162,12 @@ window.onload=function(){
         targetSets=parseInt(document.getElementById('ts-in').value);
         currentSet=1;isT2=false;startSet()
     });
-    document.getElementById('p').addEventListener('click',function(){isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';this.style.background=isPaused?cGreen:'rgb(255,68,68)';this.style.color=isPaused?'rgb(0,0,0)':cWhite});
-    document.getElementById('r').addEventListener('click',restartCurrentSet);
+    document.getElementById('p').addEventListener('click',function(){
+        isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';
+        this.style.background=isPaused?cGreen:'rgb(255,68,68)';
+        this.style.color=isPaused?'rgb(0,0,0)':cWhite;
+    });
+    document.getElementById('r').addEventListener('click',restartCurrentPhase);
     document.getElementById('e').addEventListener('click',resetToHome);
     document.getElementById('bk').addEventListener('click',resetToHome);
     document.getElementById('skip').addEventListener('click',()=>{clearInterval(restTimer);currentSet++;isT2=false;startSet()});
