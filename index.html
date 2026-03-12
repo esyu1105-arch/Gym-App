@@ -40,7 +40,13 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 <button class="btn-reset" id="r">RESET</button>
 <button class="btn-end" id="e">END</button>
 </div></div>
-<div class="screen hidden" id="rest-scr"><h2 class="rest-title">RESTING...</h2><div id="diu-msg"></div><div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div><button class="btn-plus" id="add-time">比多10秒抖抖氣</button><button class="btn-skip" id="skip">SKIP REST</button></div>
+<div class="screen hidden" id="rest-scr">
+<h2 class="rest-title">RESTING...</h2>
+<div id="diu-msg"></div>
+<div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div>
+<button class="btn-plus" id="add-time">比多10秒抖抖氣</button>
+<button class="btn-skip" id="skip">SKIP REST</button>
+</div>
 <div class="screen hidden" id="co"><div class="main-display" style="font-size:2.2rem;color:rgb(0,255,136);padding:20px;line-height:1.4">Congratulations!<br>Session Complete!</div><button class="btn-go" id="bk">DONE</button></div>
 
 <script>
@@ -88,11 +94,13 @@ function startSet(){
     cLbl.innerText = 'READY'; cLbl.style.color = cYellow;
     document.getElementById('status-label').innerText=`Set ${currentSet} / ${targetSets} | T1`;
     speak('Ready', 1.0);
+    
+    // 精準 1 秒間隔
     let t1=setTimeout(()=>{cLbl.innerText='3';speak('3',1.1);
     let t2=setTimeout(()=>{cLbl.innerText='2';speak('2',1.1);
     let t3=setTimeout(()=>{cLbl.innerText='1';speak('1',1.1);
     let t4=setTimeout(()=>{cLbl.innerText='GO';cLbl.style.color=cGreen;speak('GO',1.2);
-    let t5=setTimeout(()=>{runLogic()},800);activeTimeouts.push(t5)},1000);activeTimeouts.push(t4)},1000);activeTimeouts.push(t3)},1000);activeTimeouts.push(t2)},1500);
+    let t5=setTimeout(()=>{runLogic()},1000);activeTimeouts.push(t5)},1000);activeTimeouts.push(t4)},1000);activeTimeouts.push(t3)},1000);activeTimeouts.push(t2)},1000);
     activeTimeouts.push(t1);
 }
 
@@ -129,7 +137,7 @@ function transitionToT2(isRestart){
             if(timeLeft <= 0){
                 clearInterval(t2Interval);
                 cLbl.style.color = cGreen; speak('GO', 1.2);
-                setTimeout(()=>runLogic(), 800);
+                setTimeout(()=>runLogic(), 1000); // T2 完咗 Ready 之後同樣抖足 1 秒先數
             }
         }
     }, 1000);
@@ -148,7 +156,7 @@ function startRest(){
         timeLeft--;document.getElementById('rest-clock').innerText=timeLeft;
         if(timeLeft===10)speak('10 seconds left',1.0);
         if(timeLeft<=3&&timeLeft>0)speak(timeLeft.toString(),1.1);
-        if(timeLeft<=0){clearInterval(restTimer);currentSet++;startSet()}
+        if(timeLeft <= 0){clearInterval(restTimer);currentSet++;startSet()}
     },1000)
 }
 
