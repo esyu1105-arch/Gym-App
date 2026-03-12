@@ -8,7 +8,7 @@
 body{background:rgb(18,18,18);color:rgb(255,255,255);text-align:center;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;height:100vh;margin:0;overflow:hidden}
 .screen{display:flex;flex-direction:column;align-items:center;gap:12px}
 .slogan-text{color:rgb(0,255,136);font-size:4.5rem;font-weight:900;margin:-60px 0 10px 0;font-style:italic;text-shadow:3px 3px 15px rgba(0,255,136,0.4);line-height:1.1}
-.stats-text{font-size:1.1rem;color:rgb(0,255,136);margin-bottom:5px;font-weight:600}
+.countdown-text{font-size:1.2rem;color:rgb(255,68,68);margin-bottom:8px;font-weight:900;letter-spacing:1px}
 .target-title-main{font-size:0.95rem;margin:0 0 5px 0;color:rgb(170,170,170);white-space:nowrap;letter-spacing:0.5px}
 .target-title-sub{font-size:0.8rem;margin:0;color:rgb(120,120,120);font-weight:bold}
 .rep-info{color:rgb(0,255,136);font-size:1.8rem;font-weight:600}
@@ -26,7 +26,8 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 .hidden{display:none!important}
 </style></head>
 <body>
-<div class="screen" id="h"><p class="slogan-text">肥豬王<br>瘦撚梗</p><div class="stats-text" id="total-stats">Today's Progress: 0 Sets</div>
+<div class="screen" id="h"><p class="slogan-text">肥豬王<br>瘦撚梗</p>
+<div class="countdown-text" id="cd-display">🔥 最後衝刺 🔥 : -- weeks -- days</div>
 <h1 class="target-title-main">Enter the Target Reps and Sets</h1>
 <div class="input-group">
 <div style="display:flex;flex-direction:column;gap:5px"><span class="target-title-sub">REPS</span><input type="number" id="tr-in" value="10"></div>
@@ -38,11 +39,17 @@ button{padding:18px 30px;font-size:1.3rem;border:none;border-radius:18px;font-we
 <button class="btn-reset" id="r">RESET</button>
 <button class="btn-end" id="e">END</button>
 </div></div>
-<div class="screen hidden" id="rest-scr"><h2 class="rest-title">RESTING...</h2><div id="diu-msg"></div><div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div><button class="btn-plus" id="add-time">比多10秒抖抖氣</button><button class="btn-skip" id="skip">SKIP REST</button></div>
+<div class="screen hidden" id="rest-scr">
+<h2 class="rest-title">RESTING...</h2>
+<div id="diu-msg"></div>
+<div class="main-display" id="rest-clock" style="color:rgb(0,255,136)">60</div>
+<button class="btn-plus" id="add-time">比多10秒抖抖氣</button>
+<button class="btn-skip" id="skip">SKIP REST</button>
+</div>
 <div class="screen hidden" id="co"><div class="main-display" style="font-size:2.2rem;color:rgb(0,255,136);padding:20px;line-height:1.4">Congratulations!<br>Session Complete!</div><button class="btn-go" id="bk">DONE</button></div>
 
 <script>
-let rep=1,count=1,currentSet=1,totalSetsToday=0,plusCount=0,timeLeft=60;
+let rep=1,count=1,currentSet=1,plusCount=0,timeLeft=60;
 let timer=null,restTimer=null,targetReps=10,targetSets=4,isPaused=false;
 let activeTimeouts=[];
 const sp=window.speechSynthesis;
@@ -51,12 +58,26 @@ const cGreen = 'rgb(0,255,136)', cYellow = 'rgb(255,235,59)', cWhite = 'rgb(255,
 function speak(txt,rate=1.1){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=rate;sp.speak(u)}
 function clearAllTimeouts(){activeTimeouts.forEach(clearTimeout);activeTimeouts=[]}
 
+function updateCountdown() {
+    const targetDate = new Date('2026-05-24T00:00:00');
+    const now = new Date();
+    const diff = targetDate - now;
+    if (diff > 0) {
+        const totalDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const weeks = Math.floor(totalDays / 7);
+        const days = totalDays % 7;
+        document.getElementById('cd-display').innerText = `🔥 最後衝刺 🔥 : ${weeks} weeks ${days} days`;
+    } else {
+        document.getElementById('cd-display').innerText = "🔥 大日子已到！ 🔥";
+    }
+}
+
 function resetToHome(){
     if(timer)clearInterval(timer);if(restTimer)clearInterval(restTimer);
     clearAllTimeouts();timer=null;restTimer=null;sp.cancel();
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
     document.getElementById('h').classList.remove('hidden');
-    document.getElementById('total-stats').innerText="Today's Progress: "+totalSetsToday+" Sets";
+    updateCountdown();
 }
 
 function restartCurrentSet(){if(timer)clearInterval(timer);clearAllTimeouts();timer=null;sp.cancel();startSet();}
@@ -65,25 +86,22 @@ function startSet(){
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
     document.getElementById('train-scr').classList.remove('hidden');
     rep=1;count=1;isPaused=false;
-    
     const pBtn = document.getElementById('p'), cLbl = document.getElementById('count-label');
     pBtn.innerText = 'STOP'; pBtn.style.background = 'rgb(255,68,68)'; pBtn.style.color = cWhite;
-    
-    cLbl.innerText = 'READY'; cLbl.style.color = cYellow; // Ready Phase Color
+    cLbl.innerText = 'READY'; cLbl.style.color = cYellow;
     document.getElementById('status-label').innerText='Set '+currentSet+' / '+targetSets;
     speak('Ready', 1.0);
-    
     let t1=setTimeout(()=>{cLbl.innerText='3';speak('3',1.1);
     let t2=setTimeout(()=>{cLbl.innerText='2';speak('2',1.1);
     let t3=setTimeout(()=>{cLbl.innerText='1';speak('1',1.1);
-    let t4=setTimeout(()=>{cLbl.innerText='GO';cLbl.style.color = cGreen;speak('GO',1.2); // Switch to Action Color
+    let t4=setTimeout(()=>{cLbl.innerText='GO';cLbl.style.color = cGreen;speak('GO',1.2);
     let t5=setTimeout(()=>{runLogic()},800);activeTimeouts.push(t5)},1000);activeTimeouts.push(t4)},1000);activeTimeouts.push(t3)},1000);activeTimeouts.push(t2)},1500);
     activeTimeouts.push(t1);
 }
 
 function runLogic(){
     const cLbl = document.getElementById('count-label');
-    cLbl.style.color = cGreen; // Ensure action color
+    cLbl.style.color = cGreen;
     timer=setInterval(()=>{
         if(!isPaused){
             if(count==1){
@@ -95,7 +113,7 @@ function runLogic(){
     },1000)
 }
 
-function finishSet(){clearInterval(timer);totalSetsToday++;if(currentSet>=targetSets){showFinalCongrats()}else{startRest()}}
+function finishSet(){clearInterval(timer);if(currentSet>=targetSets){showFinalCongrats()}else{startRest()}}
 
 function startRest(){
     document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
@@ -115,6 +133,7 @@ function startRest(){
 function showFinalCongrats(){speak('Congratulations! Session Complete!',1.0);document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));document.getElementById('co').classList.remove('hidden')}
 
 window.onload=function(){
+    updateCountdown();
     document.getElementById('g').addEventListener('click',()=>{targetReps=parseInt(document.getElementById('tr-in').value);targetSets=parseInt(document.getElementById('ts-in').value);currentSet=1;startSet()});
     document.getElementById('p').addEventListener('click',function(){isPaused=!isPaused;this.innerText=isPaused?'RESUME':'STOP';this.style.background=isPaused?cGreen:'rgb(255,68,68)';this.style.color=isPaused?'rgb(0,0,0)':cWhite});
     document.getElementById('r').addEventListener('click',restartCurrentSet);
