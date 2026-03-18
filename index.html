@@ -11,19 +11,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
     <style>
-        /* ── Design tokens ── */
         :root {
             --green:  rgb(0,255,136);
             --red:    rgb(255,68,68);
-            --yellow: rgb(255,193,7);
-            --dim:    rgb(120,120,120);
+            --yellow: rgb(255,235,59);
+            --amber:  rgb(255,193,7);
+            --dim:    rgb(80,80,80);
             --mid:    rgb(170,170,170);
             --bg:     rgb(18,18,18);
             --card:   rgb(34,34,34);
         }
 
-        /* ── Base ── */
         * { box-sizing: border-box; }
+
         body {
             background: var(--bg);
             color: #fff;
@@ -37,16 +37,10 @@
             overflow: hidden;
         }
 
-        /* ── Screen wrapper ── */
-        .screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-        }
+        .screen { display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .hidden { display: none !important; }
 
-        /* ── Home screen ── */
+        /* ── Home ── */
         .slogan-text {
             color: var(--green);
             font-size: 4.5rem;
@@ -74,11 +68,9 @@
         .target-title-sub {
             font-size: 0.75rem;
             margin: 0;
-            color: var(--dim);
+            color: rgb(120,120,120);
             font-weight: bold;
         }
-
-        /* ── Inputs ── */
         .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
         input {
             background: var(--card);
@@ -101,25 +93,48 @@
             min-width: 105px;
             cursor: pointer;
         }
-        .btn-go   { background: var(--green);  color: #000; min-width: 160px; }
-        .btn-plus { background: var(--yellow); color: #000; margin-bottom: 10px; min-width: 160px; }
-        .btn-stop { background: var(--red);    color: #fff; }
-        .btn-skip { background: var(--mid);    color: #000; }
-        .btn-reset{ background: rgb(68,68,68); color: #fff; }
-        .btn-end  { background: rgb(100,100,100); color: #fff; }
+        .btn-go    { background: var(--green); color: #000; min-width: 160px; }
+        .btn-plus  { background: var(--amber); color: #000; }
+        .btn-stop  { background: var(--red);   color: #fff; }
+        .btn-skip  { background: var(--mid);   color: #000; }
+        .btn-reset { background: rgb(68,68,68);    color: #fff; }
+        .btn-end   { background: rgb(100,100,100); color: #fff; }
 
         /* ── Training screen ── */
         .rep-info { color: var(--green); font-size: 1.8rem; font-weight: 600; }
+
         .main-display {
             font-size: 8rem;
             font-weight: 900;
-            margin: 10px 0;
+            margin: 6px 0 0;
             line-height: 1.1;
             min-height: 9rem;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
+        /* ── Beat dots (Point 1) ── */
+        .beat-dots {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin: 4px 0 10px;
+            height: 28px;
+            align-items: center;
+        }
+        .beat-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--dim);
+            transition: background 0.08s, box-shadow 0.08s;
+        }
+        .beat-dot.active {
+            background: var(--green);
+            box-shadow: 0 0 12px var(--green);
+        }
+        .beat-dots.invisible { visibility: hidden; }
 
         /* ── Rest screen ── */
         .rest-title { font-size: 2rem; color: #fff; margin: 0; }
@@ -131,11 +146,11 @@
             margin-bottom: 5px;
             text-transform: uppercase;
         }
+        .rest-btn-row { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
 
-    <!-- Silent audio: keeps audio session alive on iOS so speech works in background -->
     <audio id="silent-audio" loop preload="auto">
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav">
     </audio>
@@ -165,11 +180,20 @@
     <!-- ══ Training Screen ══ -->
     <div class="screen hidden" id="train-scr">
         <div class="rep-info" id="status-label">Set 1 / 4 | T1</div>
-        <div class="main-display" id="count-label">READY</div>
+
+        <!-- Point 1: big rep number + 4 beat dots below -->
+        <div class="main-display" id="count-label">準備</div>
+        <div class="beat-dots invisible" id="beat-dots">
+            <div class="beat-dot" id="dot-1"></div>
+            <div class="beat-dot" id="dot-2"></div>
+            <div class="beat-dot" id="dot-3"></div>
+            <div class="beat-dot" id="dot-4"></div>
+        </div>
+
         <div style="display:flex;gap:8px">
-            <button class="btn-stop" id="pause-btn" onclick="triggerPause()">STOP</button>
-            <button class="btn-reset" onclick="restartCurrentPhase()">RESET</button>
-            <button class="btn-end"   onclick="resetToHome()">END</button>
+            <button class="btn-stop"  id="pause-btn" onclick="triggerPause()">暫停</button>
+            <button class="btn-reset" onclick="restartCurrentPhase()">重來</button>
+            <button class="btn-end"   onclick="resetToHome()">結束</button>
         </div>
     </div>
 
@@ -178,7 +202,12 @@
         <h2 class="rest-title">RESTING...</h2>
         <div id="diu-msg"></div>
         <div class="main-display" id="rest-clock" style="color:var(--green)">60</div>
-        <button class="btn-plus" onclick="addTenSeconds()">比多10秒抖抖氣</button>
+
+        <!-- Point 3: pause button on rest screen -->
+        <div class="rest-btn-row">
+            <button class="btn-stop" id="rest-pause-btn" onclick="triggerPause()">暫停</button>
+            <button class="btn-plus" onclick="addTenSeconds()">比多10秒抖抖氣</button>
+        </div>
         <button class="btn-skip" onclick="skipRest()">SKIP REST</button>
     </div>
 
@@ -190,30 +219,47 @@
         <button class="btn-go" onclick="resetToHome()">DONE</button>
     </div>
 
-    <!-- ══ Script 1: Countdown (standalone) ══ -->
+    <!-- ══ Countdown ══ -->
     <script>
         (function initCountdown() {
             function render() {
-                const target = new Date(2026, 4, 24).getTime(); // May 24 2026
+                const target = new Date(2026, 4, 24).getTime();
                 const diff   = target - Date.now();
                 const el     = document.getElementById('cd-display');
                 if (!el) return;
                 if (diff > 0) {
                     const totalDays = Math.floor(diff / 86_400_000);
-                    el.textContent  = `🔥 最後衝刺 🔥 : ${Math.floor(totalDays / 7)} weeks ${totalDays % 7} days`;
+                    el.textContent = `🔥 最後衝刺 🔥 : ${Math.floor(totalDays / 7)} weeks ${totalDays % 7} days`;
                 } else {
                     el.textContent = '🔥 大日子已到！ 🔥';
                 }
             }
             render();
-            // Refresh every minute in case the app stays open overnight
             setInterval(render, 60_000);
         })();
     </script>
 
-    <!-- ══ Script 2: Core logic ══ -->
+    <!-- ══ Core Logic ══ -->
     <script>
     (() => {
+
+        // ── Point 8: Cantonese text map ────────────────────────────────────────
+        // lang = zh-HK → Cantonese TTS on iOS/macOS/Android/Windows
+        // Chinese characters ensure correct Cantonese pronunciation
+        const T = {
+            ready:     '準備',
+            go:        '開始',
+            cdNums:    ['3','2','1'],      // display
+            cdSpeak:   ['三','二','一'],   // spoken in Cantonese
+            beats:     ['一','二','三','四'],   // spoken on each beat; beat 1 replaced by rep number
+            tenLeft:   '還有十秒',
+            tenMore:   '多十秒',
+            stopRest:  '夠喇，唔好再抖',
+            t1Done:    '第一組完成，準備第二組',
+            t2Restart: '重新開始第二組，準備',
+            congrats:  '恭喜，今日訓練完成',
+        };
+
         // ── State ──────────────────────────────────────────────────────────────
         const state = {
             rep: 1, count: 1, currentSet: 1,
@@ -222,45 +268,47 @@
             targetReps1: 10, targetReps2: 10, targetSets: 4,
         };
 
-        // ── Timers (kept at module level for easy clearing) ────────────────────
-        let timer        = null;   // main tempo tick
-        let restTimer    = null;   // rest countdown
-        let t2Interval   = null;   // T2 transition countdown
-        let activeTimeouts = [];   // scheduled one-shots
-        let wakeLock     = null;
+        // ── Timers ─────────────────────────────────────────────────────────────
+        let timer = null, restTimer = null, t2Interval = null;
+        let activeTimeouts = [];
+        let wakeLock = null;
 
-        // ── DOM shortcuts ──────────────────────────────────────────────────────
+        // ── DOM ────────────────────────────────────────────────────────────────
         const $ = id => document.getElementById(id);
         const SCREENS = ['h', 'train-scr', 'rest-scr', 'co'];
+        const DOTS = [1,2,3,4].map(i => $(`dot-${i}`));
 
         function showScreen(id) {
             SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id));
         }
 
-        // ── Wake Lock ──────────────────────────────────────────────────────────
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator)
-                    wakeLock = await navigator.wakeLock.request('screen');
-            } catch (_) {}
+        // ── Beat dots helper ───────────────────────────────────────────────────
+        // activeBeat: 1-4 fills dots progressively; 0 = reset all off
+        function setBeatDots(activeBeat, visible) {
+            $('beat-dots').classList.toggle('invisible', !visible);
+            DOTS.forEach((d, i) => d.classList.toggle('active', i < activeBeat));
         }
 
+        // ── Wake Lock ──────────────────────────────────────────────────────────
+        async function requestWakeLock() {
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+            catch (_) {}
+        }
         function releaseWakeLock() {
             wakeLock?.release().then(() => { wakeLock = null; });
         }
-
         document.addEventListener('visibilitychange', () => {
             if (wakeLock && document.visibilityState === 'visible') requestWakeLock();
         });
 
-        // ── Speech ─────────────────────────────────────────────────────────────
+        // ── Speech (zh-HK = Cantonese) ────────────────────────────────────────
         const sp = window.speechSynthesis;
-
         function speak(txt, rate = 1.1) {
             try {
                 if (sp.speaking) sp.cancel();
                 const u = new SpeechSynthesisUtterance(txt);
-                u.lang = 'en-US'; u.rate = rate;
+                u.lang = 'zh-HK';
+                u.rate = rate;
                 sp.speak(u);
             } catch (_) {}
         }
@@ -271,66 +319,52 @@
             activeTimeouts.push(id);
             return id;
         }
-
-        function clearAllTimeouts() {
-            activeTimeouts.forEach(clearTimeout);
-            activeTimeouts = [];
-        }
-
-        // ── Clear all timers ───────────────────────────────────────────────────
+        function clearAllTimeouts() { activeTimeouts.forEach(clearTimeout); activeTimeouts = []; }
         function clearAllTimers() {
             clearInterval(timer); clearInterval(restTimer); clearInterval(t2Interval);
             clearAllTimeouts();
             timer = restTimer = t2Interval = null;
         }
 
-        // ── Pause / Resume ─────────────────────────────────────────────────────
+        // ── Pause — shared by train + rest screens (Point 3) ──────────────────
         window.triggerPause = function() {
             state.isPaused = !state.isPaused;
-            const btn = $('pause-btn');
+
+            // Update both pause buttons simultaneously
+            ['pause-btn', 'rest-pause-btn'].forEach(id => {
+                const btn = $(id);
+                if (!btn) return;
+                btn.textContent      = state.isPaused ? '繼續' : '暫停';
+                btn.style.background = state.isPaused ? 'var(--green)' : 'var(--red)';
+                btn.style.color      = state.isPaused ? '#000' : '#fff';
+            });
+
             if (state.isPaused) {
-                sp.cancel();                                    // BUG FIX: cancel in-flight speech
-                btn.textContent        = 'RESUME';
-                btn.style.background   = 'var(--green)';
-                btn.style.color        = '#000';
+                sp.cancel();
                 $('silent-audio').pause();
             } else {
-                btn.textContent        = 'STOP';
-                btn.style.background   = 'var(--red)';
-                btn.style.color        = '#fff';
                 $('silent-audio').play().catch(() => {});
             }
         };
 
         // ── Session start ──────────────────────────────────────────────────────
         window.triggerStart = function() {
-            const parse = (id, fallback, min) => {
-                const v = parseInt($(id).value);
-                return isNaN(v) || v < min ? fallback : v;
-            };
+            const parse = (id, fb, min) => { const v = parseInt($(id).value); return isNaN(v)||v<min ? fb : v; };
             state.targetReps1 = parse('tr1-in', 1, 1);
             state.targetReps2 = parse('tr2-in', 0, 0);
             state.targetSets  = parse('ts-in',  1, 1);
-            state.currentSet  = 1;
-            state.isT2        = false;
+            state.currentSet  = 1; state.isT2 = false;
             requestWakeLock();
             startSet();
         };
 
-        // ── Reset to Home ──────────────────────────────────────────────────────
         window.resetToHome = function() {
-            clearAllTimers();
-            sp.cancel();
-            releaseWakeLock();
-            showScreen('h');
+            clearAllTimers(); sp.cancel(); releaseWakeLock(); showScreen('h');
         };
 
-        // ── Restart current phase ──────────────────────────────────────────────
         window.restartCurrentPhase = function() {
             clearInterval(timer); clearInterval(t2Interval);
-            clearAllTimeouts();
-            timer = t2Interval = null;
-            sp.cancel();
+            clearAllTimeouts(); timer = t2Interval = null; sp.cancel();
             state.isT2 ? transitionToT2(true) : startSet();
         };
 
@@ -340,27 +374,23 @@
             state.rep = 1; state.count = 1; state.isPaused = false;
 
             const btn = $('pause-btn');
-            btn.textContent      = 'STOP';
-            btn.style.background = 'var(--red)';
-            btn.style.color      = '#fff';
+            btn.textContent = '暫停'; btn.style.background = 'var(--red)'; btn.style.color = '#fff';
 
             const lbl = $('count-label');
-            lbl.textContent  = 'READY';
-            lbl.style.color  = 'rgb(255,235,59)';
+            lbl.textContent = T.ready; lbl.style.color = 'var(--yellow)';
+            setBeatDots(0, false);
 
             $('status-label').textContent = `Set ${state.currentSet} / ${state.targetSets} | T1`;
-
             $('silent-audio').play().catch(() => {});
 
-            speak('Ready', 1.0);
+            speak(T.ready, 1.0);
             let t = 0;
-            ['3','2','1'].forEach(n => {
-                scheduleTimeout(() => { lbl.textContent = n; speak(n); }, (++t) * 1000);
+            T.cdNums.forEach((n, i) => {
+                scheduleTimeout(() => { lbl.textContent = n; speak(T.cdSpeak[i]); }, (++t) * 1000);
             });
             scheduleTimeout(() => {
-                lbl.textContent = 'GO';
-                lbl.style.color = 'var(--green)';
-                speak('GO', 1.2);
+                lbl.textContent = T.go; lbl.style.color = 'var(--green)';
+                speak(T.go, 1.2);
                 scheduleTimeout(runLogic, 1000);
             }, ++t * 1000);
         }
@@ -375,19 +405,18 @@
 
                 const target = state.isT2 ? state.targetReps2 : state.targetReps1;
 
-                // Display: rep number on beat 1, then 2 / 3 / 4
-                lbl.textContent = (state.count === 1) ? state.rep : state.count;
-                speak(lbl.textContent.toString());
+                // Point 1: always show rep number; dots show which beat we're on
+                lbl.textContent = state.rep;
+                setBeatDots(state.count, true);
 
-                // End of final rep's final beat → transition
+                // Beat 1 → say rep number; beats 2-4 → say 二/三/四
+                speak(state.count === 1 ? String(state.rep) : T.beats[state.count - 1]);
+
                 if (state.rep >= target && state.count >= 4) {
                     clearInterval(timer);
                     scheduleTimeout(() => {
-                        if (!state.isT2 && state.targetReps2 > 0) {
-                            transitionToT2(false);
-                        } else {
-                            finishSet();
-                        }
+                        setBeatDots(0, false);
+                        (!state.isT2 && state.targetReps2 > 0) ? transitionToT2(false) : finishSet();
                     }, 1000);
                     return;
                 }
@@ -396,29 +425,30 @@
                 if (state.count > 4) { state.count = 1; state.rep++; }
             }
 
-            tick(); // fire immediately to avoid 1-second dead air after GO
+            tick();
             timer = setInterval(tick, 1000);
         }
 
-        // ── T1 → T2 transition ─────────────────────────────────────────────────
+        // ── T2 transition ──────────────────────────────────────────────────────
         function transitionToT2(isRestart) {
             state.isT2 = true; state.rep = 1; state.count = 1;
             const lbl = $('count-label');
-            lbl.textContent = 'T2 READY';
-            lbl.style.color = 'rgb(255,235,59)';
+            lbl.textContent = T.ready; lbl.style.color = 'var(--yellow)';
+            setBeatDots(0, false);
             $('status-label').textContent = `Set ${state.currentSet} / ${state.targetSets} | T2`;
-            speak(isRestart ? 'Restarting Training 2. Ready.' : 'Training 1 complete. Ready for Training 2', 1.0);
+            speak(isRestart ? T.t2Restart : T.t1Done, 1.0);
 
             let tLeft = 6;
             t2Interval = setInterval(() => {
                 if (state.isPaused) return;
                 tLeft--;
-                lbl.textContent = tLeft > 0 ? tLeft : 'GO';
-                if (tLeft > 0 && tLeft <= 3) speak(tLeft.toString());
+                const cdIdx = 3 - tLeft;
+                lbl.textContent = tLeft > 0 ? (T.cdNums[cdIdx] ?? tLeft) : T.go;
+                if (tLeft > 0 && tLeft <= 3) speak(T.cdSpeak[cdIdx]);
                 if (tLeft <= 0) {
                     clearInterval(t2Interval);
                     lbl.style.color = 'var(--green)';
-                    speak('GO', 1.2);
+                    speak(T.go, 1.2);
                     scheduleTimeout(runLogic, 1000);
                 }
             }, 1000);
@@ -437,54 +467,49 @@
         // ── Rest countdown ─────────────────────────────────────────────────────
         function startRest() {
             showScreen('rest-scr');
-            state.plusCount = 0; state.timeLeft = 60;
+            state.plusCount = 0; state.timeLeft = 60; state.isPaused = false;
 
-            $('diu-msg').textContent     = '';
-            $('rest-clock').style.color  = 'var(--green)';
-            $('rest-clock').textContent  = state.timeLeft;
+            // Reset rest pause button
+            const rBtn = $('rest-pause-btn');
+            rBtn.textContent = '暫停'; rBtn.style.background = 'var(--red)'; rBtn.style.color = '#fff';
+
+            $('diu-msg').textContent    = '';
+            $('rest-clock').style.color = 'var(--green)';
+            $('rest-clock').textContent = state.timeLeft;
 
             restTimer = setInterval(() => {
-                if (state.isPaused) return;          // BUG FIX: respect pause during rest
-
+                if (state.isPaused) return;   // Point 3 fix: honour pause during rest
                 state.timeLeft--;
                 $('rest-clock').textContent = state.timeLeft;
-                if (state.timeLeft === 10) speak('10 seconds left', 1.0);
-                if (state.timeLeft > 0 && state.timeLeft <= 3) speak(state.timeLeft.toString());
-                if (state.timeLeft <= 0) {
-                    clearInterval(restTimer);
-                    state.currentSet++;
-                    startSet();
-                }
+                if (state.timeLeft === 10) speak(T.tenLeft, 1.0);
+                if (state.timeLeft > 0 && state.timeLeft <= 3) speak(String(state.timeLeft));
+                if (state.timeLeft <= 0) { clearInterval(restTimer); state.currentSet++; startSet(); }
             }, 1000);
         }
 
         window.addTenSeconds = function() {
             if (state.plusCount < 2) {
-                state.timeLeft += 10;
-                state.plusCount++;
+                state.timeLeft += 10; state.plusCount++;
                 $('rest-clock').textContent = state.timeLeft;
-                speak('Ten more seconds', 1.1);
+                speak(T.tenMore, 1.1);
             } else {
                 $('diu-msg').textContent    = 'Diu你咩抖咁耐';
                 $('rest-clock').style.color = 'var(--red)';
-                speak('Stop resting', 1.0);
+                speak(T.stopRest, 1.0);
             }
         };
 
         window.skipRest = function() {
-            clearInterval(restTimer);
-            state.currentSet++;
-            state.isT2 = false;
-            startSet();
+            clearInterval(restTimer); state.currentSet++; state.isT2 = false; startSet();
         };
 
         // ── Congrats ───────────────────────────────────────────────────────────
         function showFinalCongrats() {
-            speak('Congratulations! Session Complete!', 1.0);
+            speak(T.congrats, 1.0);
             showScreen('co');
         }
 
-    })(); // end IIFE
+    })();
     </script>
 </body>
 </html>
