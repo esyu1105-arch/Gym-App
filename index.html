@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <title>Gym Tempo Pro</title>
+    
+    <!-- PWA Setup & Icons (iOS + Android) -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    
     <style>
         body{background:rgb(18,18,18);color:rgb(255,255,255);text-align:center;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;height:100vh;margin:0;overflow:hidden}
         .screen{display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -29,6 +35,10 @@
     </style>
 </head>
 <body>
+    <audio id="silent-audio" loop preload="auto">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav">
+    </audio>
+
     <!-- Home Screen -->
     <div class="screen" id="h">
         <p class="slogan-text">肥豬王<br>瘦撚梗</p>
@@ -68,10 +78,11 @@
         <button class="btn-go" onclick="resetToHome()">DONE</button>
     </div>
 
-    <!-- 腳本區塊 1: 倒數功能 (獨立運作) -->
+    <!-- Script 1: 倒數模組 (獨立運作) -->
     <script>
         function updateCountdown() {
             try {
+                // 2026-05-24 (JavaScript month is 0-indexed, so 4 is May)
                 var target = new Date(2026, 4, 24).getTime(); 
                 var now = new Date().getTime();
                 var diff = target - now;
@@ -91,7 +102,7 @@
         updateCountdown();
     </script>
 
-    <!-- 腳本區塊 2: 核心功能 -->
+    <!-- Script 2: 核心邏輯 -->
     <script>
         var rep = 1, count = 1, currentSet = 1, plusCount = 0, timeLeft = 60, isT2 = false;
         var timer = null, restTimer = null, t2Interval = null, targetReps1 = 10, targetReps2 = 10, targetSets = 4, isPaused = false;
@@ -100,6 +111,7 @@
         var cGreen = 'rgb(0,255,136)', cYellow = 'rgb(255,235,59)', cWhite = 'rgb(255,255,255)';
         var wakeLock = null;
 
+        // 螢幕長亮控制
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
@@ -118,6 +130,7 @@
             if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
         });
 
+        // 語音控制
         function speak(txt, rate) {
             try {
                 if(sp.speaking) sp.cancel();
@@ -131,6 +144,7 @@
             activeTimeouts = [];
         }
 
+        // 開始流程
         function triggerStart() {
             var val1 = parseInt(document.getElementById('tr1-in').value);
             targetReps1 = isNaN(val1) || val1 < 1 ? 1 : val1;
@@ -171,6 +185,9 @@
             pBtn.innerText = 'STOP'; pBtn.style.background = 'rgb(255,68,68)'; pBtn.style.color = cWhite;
             cLbl.innerText = 'READY'; cLbl.style.color = cYellow;
             document.getElementById('status-label').innerText = "Set " + currentSet + " / " + targetSets + " | T1";
+            
+            try { document.getElementById('silent-audio').play().catch(function(){}); } catch(e){}
+            
             speak('Ready', 1.0);
             activeTimeouts.push(setTimeout(function () { cLbl.innerText = '3'; speak('3', 1.1);
                 activeTimeouts.push(setTimeout(function () { cLbl.innerText = '2'; speak('2', 1.1);
@@ -191,17 +208,15 @@
                 
                 var target = isT2 ? targetReps2 : targetReps1;
                 
-                // 正常讀數
                 if (count == 1) {
                     cLbl.innerText = rep; speak(rep.toString(), 1.1);
                 } else { 
                     cLbl.innerText = count; speak(count.toString(), 1.1); 
                 }
 
-                // 核心修復：當讀出最後一下「4」嗰一刻，即刻鎖定收尾，唔再依賴下一次 tick
+                // 收尾邏輯：確保最後一下數完先轉場
                 if (rep >= target && count >= 4) {
                     clearInterval(timer);
-                    // 延遲 1 秒等使用者做埋最後個動作，然後強制過場
                     activeTimeouts.push(setTimeout(function() {
                         if (!isT2 && targetReps2 > 0) {
                             transitionToT2(false); 
@@ -216,7 +231,7 @@
                 if (count > 4) { count = 1; rep++; }
             }
             
-            tick(); // 立即執行第一次
+            tick(); // 立即執行第一次，避免 GO 之後多 1 秒空窗
             timer = setInterval(tick, 1000);
         }
 
@@ -276,6 +291,15 @@
             pBtn.innerText = isPaused ? 'RESUME' : 'STOP';
             pBtn.style.background = isPaused ? cGreen : 'rgb(255,68,68)';
             pBtn.style.color = isPaused ? 'rgb(0,0,0)' : cWhite;
+            
+            try {
+                var audio = document.getElementById('silent-audio');
+                if (isPaused) {
+                    audio.pause();
+                } else {
+                    audio.play().catch(function(){});
+                }
+            } catch(e) {}
         }
 
         function addTenSeconds() {
