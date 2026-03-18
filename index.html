@@ -72,7 +72,6 @@
     <script>
         function updateCountdown() {
             try {
-                // Target date: 2026-05-24. Month is 0-indexed, so May is 4.
                 var target = new Date(2026, 4, 24).getTime(); 
                 var now = new Date().getTime();
                 var diff = target - now;
@@ -99,35 +98,24 @@
         var activeTimeouts = [];
         var sp = window.speechSynthesis;
         var cGreen = 'rgb(0,255,136)', cYellow = 'rgb(255,235,59)', cWhite = 'rgb(255,255,255)';
-        var wakeLock = null; // 螢幕長亮 API 控制物件
+        var wakeLock = null;
 
-        // 申請螢幕長亮
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Screen Wake Lock active');
                 }
-            } catch (err) {
-                console.log('Wake Lock Error:', err.message);
-            }
+            } catch (err) {}
         }
 
-        // 釋放螢幕長亮
         function releaseWakeLock() {
             if (wakeLock !== null) {
-                wakeLock.release().then(function() {
-                    wakeLock = null;
-                    console.log('Screen Wake Lock released');
-                });
+                wakeLock.release().then(function() { wakeLock = null; });
             }
         }
 
-        // 監聽網頁可見度變化 (如果 user 切換 app，返嚟要重新 request)
         document.addEventListener('visibilitychange', function() {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                requestWakeLock();
-            }
+            if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
         });
 
         function speak(txt, rate) {
@@ -154,14 +142,14 @@
             targetSets = isNaN(valSet) || valSet < 1 ? 1 : valSet;
 
             currentSet = 1; isT2 = false; 
-            requestWakeLock(); // 開始操嘢，鎖定螢幕長亮
+            requestWakeLock();
             startSet();
         }
 
         function resetToHome() {
             if (timer) clearInterval(timer); if (restTimer) clearInterval(restTimer); if (t2Interval) clearInterval(t2Interval);
             clearAllTimeouts(); timer = null; restTimer = null; t2Interval = null; sp.cancel();
-            releaseWakeLock(); // 完結，釋放螢幕
+            releaseWakeLock();
             var scs = document.querySelectorAll('.screen');
             for (var i = 0; i < scs.length; i++) { scs[i].classList.add('hidden'); }
             document.getElementById('h').classList.remove('hidden');
@@ -197,30 +185,38 @@
 
         function runLogic() {
             var cLbl = document.getElementById('count-label'); cLbl.style.color = cGreen;
+            
             function tick() {
-                if (!isPaused) {
-                    var target = isT2 ? targetReps2 : targetReps1;
-                    if (count == 1) {
-                        if (rep > target) {
-                            clearInterval(timer);
-                            if (!isT2) { 
-                                if (targetReps2 > 0) {
-                                    transitionToT2(false); 
-                                } else {
-                                    finishSet(); 
-                                }
-                            } else { 
-                                finishSet(); 
-                            }
-                            return;
-                        }
-                        cLbl.innerText = rep; speak(rep.toString(), 1.1);
-                    } else { cLbl.innerText = count; speak(count.toString(), 1.1); }
-                    count++; if (count > 4) { count = 1; rep++; }
+                if (isPaused) return;
+                
+                var target = isT2 ? targetReps2 : targetReps1;
+                
+                // 正常讀數
+                if (count == 1) {
+                    cLbl.innerText = rep; speak(rep.toString(), 1.1);
+                } else { 
+                    cLbl.innerText = count; speak(count.toString(), 1.1); 
                 }
+
+                // 核心修復：當讀出最後一下「4」嗰一刻，即刻鎖定收尾，唔再依賴下一次 tick
+                if (rep >= target && count >= 4) {
+                    clearInterval(timer);
+                    // 延遲 1 秒等使用者做埋最後個動作，然後強制過場
+                    activeTimeouts.push(setTimeout(function() {
+                        if (!isT2 && targetReps2 > 0) {
+                            transitionToT2(false); 
+                        } else {
+                            finishSet(); 
+                        }
+                    }, 1000));
+                    return;
+                }
+                
+                count++; 
+                if (count > 4) { count = 1; rep++; }
             }
             
-            tick(); // 立即執行第一次，抵消 setInterval 首個 delay
+            tick(); // 立即執行第一次
             timer = setInterval(tick, 1000);
         }
 
@@ -243,7 +239,14 @@
             }, 1000);
         }
 
-        function finishSet() { clearInterval(timer); if (currentSet >= targetSets) { showFinalCongrats(); } else { isT2 = false; startRest(); } }
+        function finishSet() { 
+            if (currentSet >= targetSets) { 
+                showFinalCongrats(); 
+            } else { 
+                isT2 = false; 
+                startRest(); 
+            } 
+        }
 
         function startRest() {
             var scs = document.querySelectorAll('.screen');
@@ -258,6 +261,13 @@
                 if (timeLeft <= 3 && timeLeft > 0) speak(timeLeft.toString(), 1.1);
                 if (timeLeft <= 0) { clearInterval(restTimer); currentSet++; startSet(); }
             }, 1000);
+        }
+
+        function showFinalCongrats() {
+            speak('Congratulations! Session Complete!', 1.0);
+            var scs = document.querySelectorAll('.screen');
+            for (var i = 0; i < scs.length; i++) { scs[i].classList.add('hidden'); }
+            document.getElementById('co').classList.remove('hidden');
         }
 
         function triggerPause() {
